@@ -1,0 +1,76 @@
+service: instagrao
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  region: sa-east-1
+  stage: dev
+  environment:
+    DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+
+functions:
+  getImageMetadata:
+    handler: handler.getImageMetadata
+    memorySize: 128
+    timeout: 30
+    events:
+      - http:
+          path: images/metadata/{s3objectkey}
+          method: get
+          cors: true
+  getImage:
+    handler: handler.getImage
+    memorySize: 128
+    timeout: 30
+    events:
+      - http:
+          path: images/download/{s3objectkey}
+          method: get
+          cors: true
+  infoImages:
+    handler: handler.infoImages
+    memorySize: 128
+    timeout: 30
+    events:
+      - http:
+          path: info/images/
+          method: get
+          cors: true
+  extractMetadata:
+    handler: handler.extractMetadata
+    memorySize: 128
+    timeout: 30
+    events:
+      - s3:
+          bucket: pictures-intagrao
+          event: s3:ObjectCreated:*
+resources:
+  Resources:
+    ImagesDynamoDbTable:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
+        AttributeDefinitions:
+          - AttributeName: s3objectkey
+            AttributeType: S
+        KeySchema:
+          - AttributeName: s3objectkey
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+plugins:
+  - serverless-offline
+  - serverless-plugin-typescript

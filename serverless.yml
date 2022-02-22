@@ -7,6 +7,9 @@ frameworkVersion: "3"
 provider:
   #nome do provedor
   name: aws
+  apiName: ${self:service}
+  memorySize: 128 #mb
+  timeout: 30 #seconds
   #linguagem e versão
   runtime: nodejs14.x
   #região que o serviço será hospedado
@@ -15,18 +18,13 @@ provider:
   stage: dev
   #variáveis de ambiente
   environment:
-    DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage}
-  #permições
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - dynamodb:Query
-        - dynamodb:Scan
-        - dynamodb:GetItem
-        - dynamodb:PutItem
-        - dynamodb:UpdateItem
-        - dynamodb:DeleteItem
-      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+    DYNAMODB_TABLE: ${self:custom.tableName}
+    BUCKET_NAME: ${self:custom.bucketName}
+    REGION: ${self:provider.region}
+
+custom:
+  bucketName: ${self:service}-s3-file-bucket-${self:provider.stage}
+  tableName: ${self:service}-${opt:stage, self:provider.stage}
 
 #funções
 functions:
@@ -36,63 +34,103 @@ functions:
   extractMetadata:
     #diretório da função
     handler: handler.extractMetadata
-    #quantidade de memória alocada para a operação
-    memorySize: 128
-    #tempo limite de execução
-    timeout: 30
     #lista de eventos que disparam essa função
     events:
       #serviço S3
       - s3:
           #Nome do bucket que será criado caso não exista
-          #caso ja exista o bucket deveremos ativar a função abaixo
-          #existing: true
-          bucket: pictures-intagrao
+          bucket: ${self:custom.bucketName}
           #evento que desejamos ouvir
           event: s3:ObjectCreated:*
+          existing: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "dynamodb:Scan"
+          - "dynamodb:Query"
+          - "dynamodb:PutItem"
+        Resource: arn:aws:dynamodb:::${self:custom.tableName}/*
+      - Effect: Allow
+        Action:
+          - "s3:*"
+        Resource: arn:aws:s3:::${self:custom.bucketName}/*
+
   #Endpoint que espera receber um s3objectkey referente
   # a imagem salva no bucket de imagens e retorna os metadados dessa imagem
   getImageMetadata:
     handler: handler.getImageMetadata
-    memorySize: 128
-    timeout: 30
     events:
       #requisição http
       - http:
           #rota e declaração de atributos que desejamos receber
-          path: images/metadata/{s3objectkey}
+          path: image/metadata/{s3objectkey}
           #metodo http
-          method: get
+          method: GET
           #cors
           cors: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "dynamodb:Scan"
+          - "dynamodb:Query"
+          - "dynamodb:GetItem"
+        Resource: arn:aws:dynamodb:::${self:custom.tableName}/*
+
   #Endpoint que espera receber um s3objectkey e retorna uma imagem
   getImage:
     handler: handler.getImage
-    memorySize: 128
-    timeout: 30
     events:
       - http:
-          path: images/download/{s3objectkey}
-          method: get
-          cors: true
+          path: image/download/{s3objectkey}
+          method: GET
+          cors: false
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "s3:Get*"
+        Resource: arn:aws:s3:::${self:custom.bucketName}/*
+
   #Não recebe parametros e retorna a tabela que contem:
   # - Qual imagem contém o maior tamanho
   # - Qual imagem contém o menor tamanho
   # - Quais os tipos de imagem salvas no S3
   # - Qual a quantidade de cada tipo de imagem salva
-  infoImages:
-    handler: handler.infoImages
-    memorySize: 128
-    timeout: 30
+  getInfoImages:
+    handler: handler.getInfoImages
     events:
       - http:
           path: info/images/
-          method: get
+          method: GET
           cors: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "dynamodb:Scan"
+          - "dynamodb:Query"
+          - "dynamodb:GetItem"
+        Resource: arn:aws:dynamodb:::${self:custom.tableName}/*
+
+  s3FileUploader:
+    handler: handler.s3FileUploader
+    name: s3-file-uploader
+    event:
+      - http:
+          path: image/upload
+          method: POST
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "s3:Put*"
+        Resource: arn:aws:s3:::${self:custom.bucketName}/*
 
 #recursos
 resources:
   Resources:
+    FileBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.bucketName}
+        AccessControl: Private
     #nome do recurso
     ImagesDynamoDbTable:
       #tipo do recurso
@@ -118,3 +156,4 @@ resources:
 plugins:
   - serverless-offline
   - serverless-plugin-typescript
+  - serverless-iam-roles-per-function

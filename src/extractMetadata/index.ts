@@ -37,10 +37,7 @@ const extractMetadata: S3Handler = async (event: S3Event) => {
           ContentType: getExtension(key),
           size: ImageSize,
         };
-        console.log("image ->", image);
-        console.log("item que deveria ser salvo - ", item);
-        console.log("tabela -", TABLE_NAME);
-        console.log("dynamoDb -", dynamoDb);
+
         await dynamoDb
           .put({
             TableName: TABLE_NAME,

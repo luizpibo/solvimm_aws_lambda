@@ -34,7 +34,6 @@ const getImage: APIGatewayProxyHandler = async (
       Bucket: BUCKET_NAME,
       Key: s3objectkey as string,
     };
-    console.log("params-getimage: ", params);
     const image = s3.getSignedUrl("getObject", params);
     return {
       statusCode: 200,

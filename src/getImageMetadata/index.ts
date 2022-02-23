@@ -6,7 +6,6 @@ import {
   APIGatewayProxyResult,
 } from "aws-lambda";
 import { DynamoDB } from "aws-sdk";
-import getImage from "./../getImage/index";
 
 const TABLE = process.env.DYNAMODB_TABLE;
 

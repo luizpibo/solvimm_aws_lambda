@@ -1,54 +1,11 @@
-"use strict";
+import extractMetadata from "./src/extractMetadata";
+import getImageMetadata from "./src/getImageMetadata";
+import getImage from "./src/getImage";
+import getInfoImages from "./src/getInfoImages";
 
-export const getImageMetadata = async (event) => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify(
-      {
-        message: "Go Serverless v3.0! Your function executed successfully!",
-        input: event,
-      },
-      null,
-      2
-    ),
-  };
-};
-export const getImage = async (event) => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify(
-      {
-        message: "Go Serverless v3.0! Your function executed successfully!",
-        input: event,
-      },
-      null,
-      2
-    ),
-  };
-};
-export const infoImages = async (event) => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify(
-      {
-        message: "Go Serverless v3.0! Your function executed successfully!",
-        input: event,
-      },
-      null,
-      2
-    ),
-  };
-};
-export const extractMetadata = async (event) => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify(
-      {
-        message: "Go Serverless v3.0! Your function executed successfully!",
-        input: event,
-      },
-      null,
-      2
-    ),
-  };
+export = {
+  extractMetadata,
+  getImageMetadata,
+  getImage,
+  getInfoImages,
 };

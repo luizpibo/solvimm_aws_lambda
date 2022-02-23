@@ -6,8 +6,13 @@ import {
   APIGatewayProxyResult,
 } from "aws-lambda";
 import { DynamoDB } from "aws-sdk";
-const dynamoDb = new DynamoDB.DocumentClient();
+import getImage from "./../getImage/index";
+
 const TABLE = process.env.DYNAMODB_TABLE;
+
+const dynamoDb = new DynamoDB.DocumentClient({
+  region: process.env.REGION || "sa-east-1",
+});
 
 const getImageMetadata: APIGatewayProxyHandler = async (
   event: APIGatewayProxyEvent
@@ -28,17 +33,24 @@ const getImageMetadata: APIGatewayProxyHandler = async (
     const s3objectkey = event.pathParameters.s3objectkey;
     const params = {
       TableName: process.env.DYNAMODB_TABLE as string,
-      Key: s3objectkey,
+      Key: { s3objectkey: s3objectkey },
     };
 
-    let data = await dynamoDb.scan(params).promise();
+    let { Item } = await dynamoDb.get(params).promise();
+
+    if (!Item) {
+      return {
+        statusCode: 404,
+        body: JSON.stringify({ error: "Not Found" }),
+      };
+    }
 
     return {
       statusCode: 200,
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify(params),
+      body: JSON.stringify({ metadataImage: Item }),
     };
   } catch (err) {
     return {

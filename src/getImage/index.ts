@@ -7,6 +7,9 @@ import {
 } from "aws-lambda";
 import { S3 } from "aws-sdk";
 
+const BUCKET_NAME =
+  (process.env.BUCKET_NAME as string) || "instagrao-s3-file-bucket-dev";
+
 const getImage: APIGatewayProxyHandler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
@@ -28,17 +31,17 @@ const getImage: APIGatewayProxyHandler = async (
     const s3objectkey = event.pathParameters.s3objectkey;
 
     const params = {
-      Bucket: process.env.BUCKET as string,
+      Bucket: BUCKET_NAME,
       Key: s3objectkey as string,
     };
-
-    const image = await s3.getObject(params).promise();
+    console.log("params-getimage: ", params);
+    const image = s3.getSignedUrl("getObject", params);
     return {
       statusCode: 200,
       headers: {
-        "content-type": image.ContentType,
+        "content-type": "application/json",
       },
-      body: "aaa",
+      body: JSON.stringify({ url: image }),
     };
   } catch (err) {
     return {

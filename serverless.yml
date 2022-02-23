@@ -24,7 +24,9 @@ provider:
 
 custom:
   bucketName: ${self:service}-s3-file-bucket-${self:provider.stage}
+  bucketRolePath: arn:aws:s3:::${self:custom.bucketName}/*
   tableName: ${self:service}-${opt:stage, self:provider.stage}
+  tableRolePath: arn:aws:dynamodb:sa-east-1:972264571463:table/instagrao-dev
 
 #funções
 functions:
@@ -42,18 +44,15 @@ functions:
           bucket: ${self:custom.bucketName}
           #evento que desejamos ouvir
           event: s3:ObjectCreated:*
-          existing: true
     iamRoleStatements:
-      - Effect: Allow
+      - Effect: "Allow"
         Action:
-          - "dynamodb:Scan"
-          - "dynamodb:Query"
           - "dynamodb:PutItem"
-        Resource: arn:aws:dynamodb:::${self:custom.tableName}/*
-      - Effect: Allow
+        Resource: ${self:custom.tableRolePath}
+      - Effect: "Allow"
         Action:
           - "s3:*"
-        Resource: arn:aws:s3:::${self:custom.bucketName}/*
+        Resource: ${self:custom.bucketRolePath}
 
   #Endpoint que espera receber um s3objectkey referente
   # a imagem salva no bucket de imagens e retorna os metadados dessa imagem
@@ -69,12 +68,12 @@ functions:
           #cors
           cors: true
     iamRoleStatements:
-      - Effect: Allow
+      - Effect: "Allow"
         Action:
           - "dynamodb:Scan"
           - "dynamodb:Query"
           - "dynamodb:GetItem"
-        Resource: arn:aws:dynamodb:::${self:custom.tableName}/*
+        Resource: ${self:custom.tableRolePath}
 
   #Endpoint que espera receber um s3objectkey e retorna uma imagem
   getImage:
@@ -83,12 +82,11 @@ functions:
       - http:
           path: image/download/{s3objectkey}
           method: GET
-          cors: false
     iamRoleStatements:
-      - Effect: Allow
+      - Effect: "Allow"
         Action:
           - "s3:Get*"
-        Resource: arn:aws:s3:::${self:custom.bucketName}/*
+        Resource: ${self:custom.bucketRolePath}
 
   #Não recebe parametros e retorna a tabela que contem:
   # - Qual imagem contém o maior tamanho
@@ -103,34 +101,16 @@ functions:
           method: GET
           cors: true
     iamRoleStatements:
-      - Effect: Allow
+      - Effect: "Allow"
         Action:
           - "dynamodb:Scan"
           - "dynamodb:Query"
           - "dynamodb:GetItem"
-        Resource: arn:aws:dynamodb:::${self:custom.tableName}/*
-
-  s3FileUploader:
-    handler: handler.s3FileUploader
-    name: s3-file-uploader
-    event:
-      - http:
-          path: image/upload
-          method: POST
-    iamRoleStatements:
-      - Effect: Allow
-        Action:
-          - "s3:Put*"
-        Resource: arn:aws:s3:::${self:custom.bucketName}/*
+        Resource: ${self:custom.tableRolePath}
 
 #recursos
 resources:
   Resources:
-    FileBucket:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName: ${self:custom.bucketName}
-        AccessControl: Private
     #nome do recurso
     ImagesDynamoDbTable:
       #tipo do recurso

@@ -28,6 +28,7 @@ custom:
   tableName: ${self:service}-${opt:stage, self:provider.stage}
   tableRolePath: arn:aws:dynamodb:sa-east-1:972264571463:table/instagrao-dev
 
+
 #funções
 functions:
   #evento que quando disparado extrai os metadados da image
